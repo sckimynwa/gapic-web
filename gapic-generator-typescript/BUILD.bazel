@@ -1,0 +1,120 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["tsconfig.json"], visibility = ["//visibility:public"])
+
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary", "nodejs_test", "copy_to_bin")
+load("@npm//@bazel/typescript:index.bzl", "ts_project", "ts_config")
+
+filegroup(
+    name = "templates",
+    srcs = glob(["templates/**/*.*", "templates/**/.*"]),
+)
+
+filegroup(
+    name = "test_fixtures",
+    srcs = glob(["test-fixtures/**/*.*"]),
+)
+
+filegroup(
+    name = "baselines",
+    srcs = glob(["baselines/**/*.*", "baselines/**/.*"]),
+)
+
+filegroup(
+    name = "protos",
+    srcs = ["//:protos/index.js"],
+)
+
+npm_runtime_dependencies = [
+    "@npm//fs-extra",
+    "@npm//google-gax",
+    "@npm//js-yaml",
+    "@npm//long",
+    "@npm//nunjucks",
+    "@npm//object-hash",
+    "@npm//protobufjs",
+    "@npm//yargs",
+]
+
+npm_test_dependencies = npm_runtime_dependencies + [
+    "@npm//espower-typescript",
+    "@npm//sinon",
+    "@npm//mocha",
+]
+
+npm_compile_dependencies = npm_test_dependencies + [
+    "@npm//@types/js-yaml",
+    "@npm//@types/fs-extra",
+    "@npm//@types/long",
+    "@npm//@types/mocha",
+    "@npm//@types/module-alias",
+    "@npm//@types/node",
+    "@npm//@types/nunjucks",
+    "@npm//@types/object-hash",
+    "@npm//@types/sinon",
+    "@npm//@types/yargs",
+]
+
+ts_project(
+    name = "compile",
+    srcs = glob([
+            "typescript/**/*.ts",
+            "index.d.ts",
+            "protos/index.d.ts",
+        ]),
+    tsconfig = "//:tsconfig.json",
+    source_map = True,
+    declaration = True,
+    allow_js = True,
+    deps = npm_compile_dependencies,
+)
+
+copy_to_bin(
+    name = "copy_deps",
+    srcs = [
+        ":protos",
+        ":templates",
+    ],
+)
+
+nodejs_binary(
+    name = "protoc_plugin",
+    entry_point = "//:typescript/src/protoc-plugin.ts",
+    link_workspace_root = True,
+    data = [
+        ":compile",
+        ":templates",
+        ":protos",
+    ] + npm_runtime_dependencies,
+    templated_args = ["--bazel_patch_module_resolver"],
+)
+
+nodejs_binary(
+    name = "gapic_generator_typescript",
+    entry_point = "//:typescript/src/gapic-generator-typescript.ts",
+    link_workspace_root = True,
+    data = [
+        ":protoc_plugin",
+        ":compile",
+        ":templates",
+        "@com_google_protobuf//:protoc",
+        ":protos",
+    ] + npm_runtime_dependencies,
+    templated_args = [
+        "--bazel_patch_module_resolver",
+        "--protoc=\"$(rootpath @com_google_protobuf//:protoc)\"",
+    ],
+)
+
+nodejs_test(
+    name = "unit_tests",
+    entry_point = "@npm//:node_modules/mocha/bin/mocha",
+    args = ["typescript/test/unit/"],
+    data = [
+        ":gapic_generator_typescript",
+        ":test_fixtures",
+        ":baselines",
+        "@com_google_protobuf//:protoc",
+    ] + npm_test_dependencies,
+    templated_args = ["--bazel_patch_module_resolver"],
+)

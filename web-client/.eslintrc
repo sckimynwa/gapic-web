@@ -1,0 +1,10 @@
+{
+  "root": true,
+  "extends": ["../../eslintConfig/react.js"],
+  "rules": {
+    "simple-import-sort/imports": "off",
+    "import/no-unresolved": "off",
+    "import/order": "off",
+    "no-restricted-imports": "off"
+  }
+}

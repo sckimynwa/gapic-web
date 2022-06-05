@@ -2,13 +2,26 @@ import { UserServiceClient } from 'questionspoke';
 import { Suspense, useEffect } from 'react';
 
 function App() {
-  useEffect(() => {
+  const tempFunc = async () => {
     const userClient = new UserServiceClient({
+      auth: {
+        getRequestHeaders: async () => ({
+          authorization: 'Bearer token',
+        }),
+      } as any,
       fallback: 'rest',
       protocol: 'http',
+      apiEndpoint: 'localhost:3000',
+      port: undefined,
     });
-    userClient.getUser({ name: 'me' }).then((data) => console.log(data));
+    const res = await userClient.getUser({ name: 'me' });
+    console.log(res);
+  };
+
+  useEffect(() => {
+    tempFunc();
   }, []);
+
   return (
     <Suspense fallback={<></>}>
       <div>Hello World</div>

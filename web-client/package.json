@@ -25,6 +25,7 @@
     ]
   },
   "dependencies": {
+    "@mathpresso/devserver": "^2.0.2",
     "axios": "^0.24.0",
     "dayjs": "^1.10.7",
     "questionspoke": "file:../gapic-generator-typescript/question-spoke",
